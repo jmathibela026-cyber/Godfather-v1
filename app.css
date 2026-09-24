@@ -317,8 +317,9 @@ button, input, select { font-family: inherit; color: inherit; }
   position: fixed;
   left: 0; right: 0; bottom: 0;
   display: flex;
-  justify-content: space-around;
+  justify-content: center;
   align-items: center;
+  gap: 90px;
   padding: 10px 8px calc(10px + var(--sab));
   background: var(--bg-surface);
   border-top: 1px solid var(--border-dim);
@@ -351,6 +352,84 @@ button, input, select { font-family: inherit; color: inherit; }
   border: 3px solid var(--accent);
   box-shadow: 0 0 24px var(--accent-glow);
 }
+
+/* ---- Upload zone ---- */
+.upload-zone {
+  margin-top: 30px;
+  padding: 40px 24px;
+  border-radius: var(--radius-card);
+  border: 1.5px dashed var(--border-bright);
+  background: var(--bg-surface);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-zone__icon { font-size: 36px; }
+.upload-zone__title { font-family: var(--font-display); font-size: 16px; font-weight: 700; }
+.upload-zone__hint { font-size: 12.5px; color: var(--text-muted); max-width: 260px; line-height: 1.5; margin-bottom: 10px; }
+.upload-zone .btn-primary { width: auto; padding: 13px 26px; }
+
+.chart-card__clear {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ---- Settings page ---- */
+.settings-card {
+  margin-top: 10px;
+  margin-bottom: 8px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  display: flex;
+  flex-direction: column;
+}
+
+.field-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 12px 0 6px;
+}
+.field-label:first-child { margin-top: 0; }
+
+.field-input {
+  padding: 13px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-mono);
+}
+
+.field-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+.settings-status {
+  text-align: center;
+  color: var(--buy);
+  font-weight: 700;
+  font-size: 13.5px;
+  margin-top: 12px;
+}
+
+/* ---- Trade count chips ---- */
+.trade-count-chip { min-width: 52px; justify-content: center; }
 
 /* ---- Utility ---- */
 .hidden { display: none !important; }

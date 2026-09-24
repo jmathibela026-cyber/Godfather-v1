@@ -1,16 +1,16 @@
-const CACHE_NAME = 'godfather-v1';
+const CACHE_NAME = 'godfather-v8';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  './css/tokens.css',
-  './css/app.css',
-  './js/chart.js',
-  './js/scanner.js',
-  './js/api.js',
-  './js/app.js',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
+  './tokens.css',
+  './app.css',
+  './chart.js',
+  './scanner.js',
+  './api.js',
+  './app.js',
+  './icon-192.png',
+  './icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {

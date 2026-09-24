@@ -1,75 +1,115 @@
-# Godfather — AI Chart Scanner
+# Godfather — AI Chart Scanner (v4, Live Chart via Twelve Data)
 
-Installable web app (PWA) that scans live charts using an ICT "Liquidity
-Sweep" rule engine and produces BUY / SELL / WAIT signals with Entry, Stop
-Loss and Take Profit.
+Installable web app (PWA) that pulls a **live chart** for your chosen
+symbol from Twelve Data, runs it through a local ICT "Liquidity Sweep"
+rule engine, and produces a BUY / SELL / WAIT signal with Entry, Stop
+Loss and Take Profit — then lets you fire a batch of trades into your
+MT4/5 account via MetaApi Cloud.
 
-## Status
+## What changed from v3
 
-This is the **v1 frontend + signal engine**, running on mock candle data
-until the backend below is deployed. The UI, scan flow, and signal logic
-are fully functional — connect the two API functions and it goes live.
+v3 pulled live candles from MetaApi Cloud. v4 splits the two jobs
+between two providers, which is closer to the original v1 plan:
+
+- **Twelve Data** → live/historical candle data for the chart and the
+  scan engine.
+- **MetaApi Cloud** → trade execution only (placing orders on your
+  connected MT4/5 account, and reading open positions).
+
+Everything else is unchanged: `scanner.js` still does the actual
+analysis locally (no AI/LLM in the loop), two bottom tabs (Home /
+Settings), Forex Majors symbol row, trade-count selector.
+
+## Three selectable strategies
+
+The Strategy chip row on Home offers three independent momentum
+engines, all in `scanner.js`, all pure local math (no AI call). Each
+enters on momentum *resuming* out of an extreme rather than trying to
+call the exact top/bottom:
+
+- **RSI Momentum** — enters when RSI(14) crosses back out of oversold
+  (<30) or overbought (>70).
+- **Moving Averages** — a 13/50/100 EMA stack; enters on a pullback to
+  the 13 EMA while the three EMAs are aligned in trend order, stop
+  beyond the 50 EMA.
+- **Stochastic Oscillator** — enters on a %K/%D crossover coming out
+  of the oversold (<20) or overbought (>80) zone.
+
+All three fetch the same live candles (needs ~100+ bars — the 150
+fetched per scan covers this), read the higher timeframe's trend as a
+soft confidence adjustment (not a hard filter, since these are
+reversal-style signals), and return the same shape (`verdict`/`entry`/
+`sl`/`tp`/`confidence`/`strategy`/`reasoning`, or `{verdict:'wait',
+reason}`) so `app.js` just calls whichever one matches the selected
+chip.
+
+## Settings now has two sections
+
+1. **Live Chart Data — Twelve Data**: paste a Twelve Data API key
+   (free tier at [twelvedata.com](https://twelvedata.com)).
+2. **Trade Execution — MetaApi Cloud**: token, account ID, lot size
+   (unchanged from v3).
+
+## Important: this is a personal-use architecture, not multi-tenant
+
+Both keys are entered in Settings and used directly from the browser
+(`api.js`) — they live in this browser's `localStorage` and are sent
+straight to Twelve Data / MetaApi Cloud. That's fine for **your own
+device, your own keys, your own account**. Don't publish this as a
+public site with your keys already filled in, and don't hand this
+codebase to other users without adding a server-side proxy back in.
 
 ## Project structure
 
 ```
 godfather/
-├── index.html          Home / Chart Scanner screen + Signal Result view
-├── manifest.json        PWA manifest (installability)
-├── service-worker.js     Offline app-shell caching
-├── css/
-│   ├── tokens.css        Design tokens (color, type, radius — from the UI reference)
-│   └── app.css           Component + layout styles
-├── js/
-│   ├── chart.js          Canvas candlestick renderer (with SL/Entry/TP overlay)
-│   ├── scanner.js         GodfatherEngine — the ICT Liquidity Sweep rule engine
-│   ├── api.js             Frontend API client (calls your backend, see below)
-│   └── app.js              App controller: chips, scan animation, result rendering
-├── icons/                 App icons
-└── api/                  Backend serverless functions (you deploy these)
+├── index.html            Home (live chart + scan) and Settings pages
+├── manifest.json          PWA manifest (installability)
+├── service-worker.js       Offline app-shell caching (cache bumped to v4)
+├── tokens.css              Design tokens (color, type, radius)
+├── app.css                 Component + layout styles
+├── chart.js                Canvas candlestick renderer, with SL/Entry/TP overlay
+├── scanner.js               GodfatherEngine — the ICT Liquidity Sweep rule engine
+├── api.js                    Twelve Data candles + MetaApi Cloud trade execution + settings storage
+├── app.js                     App controller: live polling, scan animation, result + settings wiring
+└── icons/                     App icons
 ```
 
-## Why a backend is required
+## Setup
 
-Twelve Data and MetaAPI keys must never live in frontend JavaScript —
-anyone could open dev tools and steal them. `js/api.js` already calls
-`/api/candles`, `/api/quote`, `/api/trade`, `/api/positions` — you need to
-implement those as serverless functions (Vercel, Netlify, or Cloudflare
-Workers all have free tiers) that hold your real API keys server-side and
-proxy the requests.
+1. Get a **Twelve Data** API key (free tier: 800 calls/day, 8/min —
+   fine for personal use with the 15s chart refresh this app does).
+2. Get a **MetaApi Cloud** account, connect your MT4/5 account, and
+   grab its **Account ID** and an **auth token**.
+3. Open the app → **Settings** → paste both in → **Save Settings**.
+4. Go to **Home** — the live chart should start loading. Tap
+   **Scan Chart** once candles are showing.
 
-### `/api/candles?symbol=XAUUSD&interval=M15&count=60`
-Calls Twelve Data's `time_series` endpoint, returns:
-```json
-[{ "t": 1699999999000, "o": 2400.1, "h": 2401.5, "l": 2399.2, "c": 2400.8 }, ...]
-```
+### Things to verify before going live
 
-### `/api/trade` (POST)
-Body: `{ symbol, direction, entry, sl, tp, lots }` — calls MetaAPI's trade
-execution endpoint using your account credentials.
-
-### `/api/positions`
-Calls MetaAPI's positions endpoint for the Live Positions screen (not yet
-built — next stage).
-
-## Deploying
-
-1. Push this repo to GitHub.
-2. **Frontend (GitHub Pages):** Settings → Pages → deploy from `main` /
-   root. Your PWA is installable directly from that URL.
-3. **Backend:** deploy the `api/` functions to Vercel or Netlify (both
-   support serverless functions and free custom domains), and set
-   `TWELVE_DATA_API_KEY` and `METAAPI_TOKEN` as environment variables
-   there — never commit them to the repo.
-4. If your backend lives on a different domain than GitHub Pages, update
-   `BASE_URL` in `js/api.js` to point at it, and make sure the backend
-   sends CORS headers allowing your Pages origin.
+1. **Index symbols.** Twelve Data doesn't use broker CFD names like
+   US30/GER30/USTECH — `api.js` maps them to Twelve Data's own tickers
+   (`DJI`, `GDAXI`, `NDX`). Whether those resolve depends on your
+   Twelve Data plan (indices are sometimes gated to paid tiers) — if a
+   chart won't load for one of these, check Twelve Data's symbol
+   search for the exact ticker your plan has access to and adjust
+   `TD_SYMBOL_MAP` in `api.js`.
+2. **MetaApi region.** The trade/positions hosts in `api.js` are
+   hardcoded to MetaApi's `new-york` region (`REGION` constant). If
+   your account is provisioned elsewhere, update it or trade requests
+   will fail to route.
+3. **Rate limits.** The free Twelve Data tier caps at 8 requests/min.
+   Each scan now fetches 150-candle windows (needed for the 100 EMA) —
+   still 1 call per fetch regardless of size, so the same guidance
+   applies: fine solo, but multiple tabs will hit the limit.
 
 ## Still to build
 
-- Live Positions / Account screen (MetaAPI open positions, close/modify)
-- Settings screen (API connection status, strategy parameters)
-- The `api/` backend functions themselves (Twelve Data + MetaAPI proxies)
+- Live Positions / Account screen (MetaApi open positions, close/modify)
+- Auto-detecting the MetaApi region instead of hardcoding it
+- A symbol picker backed by Twelve Data's `/symbol_search` endpoint
+  instead of a hardcoded ticker map, so any instrument your plan
+  supports "just works"
 
 ## Local preview
 
@@ -78,5 +118,5 @@ Any static file server works, e.g.:
 npx serve .
 ```
 Then open the printed localhost URL on your phone (same network) or in
-desktop Chrome and use "Install app" from the browser menu to test the PWA
-install flow.
+desktop Chrome and use "Install app" from the browser menu to test the
+PWA install flow.
